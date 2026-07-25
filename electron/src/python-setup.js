@@ -299,7 +299,12 @@ async function setupPythonEnvironment(splashWindowContents) {
 
         // Use --upgrade to ensure outdated packages (e.g. yt-dlp) get updated
         execSync(`"${pipPath}" install --upgrade -r "${requirementsPath}"`, { stdio: 'pipe' });
-        
+
+        // yt-dlp is a rolling release that breaks on YouTube-side changes; always
+        // pull the very latest on launch so downloads keep working without an app
+        // release. Mirrors the yt-dlp upgrade in setup_venv.sh for macOS/Linux.
+        execSync(`"${pipPath}" install --upgrade yt-dlp`, { stdio: 'pipe' });
+
         console.log('Virtual environment setup completed successfully');
         
         if (splashWindowContents) {

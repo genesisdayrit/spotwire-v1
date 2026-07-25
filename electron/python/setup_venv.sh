@@ -134,24 +134,29 @@ pip install --upgrade pip
 echo "Installing wheel and setuptools..."
 pip install --upgrade wheel setuptools
 
-# Check if existing dependencies need upgrading
-# yt-dlp versions older than 2026.2.0 have known download failures
-MIN_YTDLP_VERSION="2026.2.0"
+# Install / update dependencies.
+#
+# yt-dlp is a rolling-release package: YouTube changes things server-side
+# constantly, and an older yt-dlp fails downloads with "YT-DLP download error".
+# A static minimum-version floor is not enough — once a user cleared the floor
+# they would never upgrade again and would silently break at the next YouTube
+# change. So we ALWAYS pull the latest yt-dlp on launch (it is a single small
+# package, a few seconds of network) to keep downloads working without needing
+# an app release for every YouTube-side change.
 CURRENT_YTDLP_VERSION=$(pip show yt-dlp 2>/dev/null | grep "^Version:" | awk '{print $2}')
 
 if [ -n "$CURRENT_YTDLP_VERSION" ]; then
-    # Compare versions using sort -V (version sort)
-    LOWEST=$(printf '%s\n%s' "$CURRENT_YTDLP_VERSION" "$MIN_YTDLP_VERSION" | sort -V | head -n1)
-    if [ "$LOWEST" = "$CURRENT_YTDLP_VERSION" ] && [ "$CURRENT_YTDLP_VERSION" != "$MIN_YTDLP_VERSION" ]; then
-        echo "yt-dlp $CURRENT_YTDLP_VERSION is outdated (minimum: $MIN_YTDLP_VERSION). Upgrading dependencies..."
-        pip install --upgrade -r "$REQUIREMENTS_FILE"
-    else
-        echo "Dependencies are up to date (yt-dlp $CURRENT_YTDLP_VERSION)"
-    fi
+    echo "yt-dlp $CURRENT_YTDLP_VERSION installed. Checking for a newer release..."
+    # Always upgrade yt-dlp to the latest release (resilient to YouTube changes).
+    pip install --upgrade yt-dlp
+    # Ensure the rest of the pinned deps (spotdl, ytmusicapi) meet their minimums.
+    pip install --upgrade -r "$REQUIREMENTS_FILE"
 else
-    # yt-dlp not installed yet, do a full install
+    # First run: no venv packages yet, do a full install.
     echo "Installing dependencies from requirements.txt..."
     pip install -r "$REQUIREMENTS_FILE"
+    # And make sure yt-dlp is the very latest, not just the floor in requirements.
+    pip install --upgrade yt-dlp
 fi
 
 # Check if ffmpeg is installed in the system
